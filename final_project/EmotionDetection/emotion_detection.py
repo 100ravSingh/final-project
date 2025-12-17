@@ -2,6 +2,18 @@ import requests
 import json
 
 def emotion_detector(text_to_analyze):
+
+    # ✅ Handle blank or None input BEFORE API call
+    if text_to_analyze is None or text_to_analyze.strip() == "":
+        return {
+            "anger": None,
+            "disgust": None,
+            "fear": None,
+            "joy": None,
+            "sadness": None,
+            "dominant_emotion": None
+        }
+
     url = "https://sn-watson-emotion.labs.skills.network/v1/watson.runtime.nlp.v1/NlpService/EmotionPredict"
 
     headers = {
@@ -20,44 +32,37 @@ def emotion_detector(text_to_analyze):
             url,
             headers=headers,
             data=json.dumps(payload),
-            timeout=30
+            timeout=10
         )
 
-        response.raise_for_status()
+        if response.status_code == 400:
+            return {
+                "anger": None,
+                "disgust": None,
+                "fear": None,
+                "joy": None,
+                "sadness": None,
+                "dominant_emotion": None
+            }
 
-        # Convert response text to dictionary
         response_dict = json.loads(response.text)
-
-        # Navigate Watson response structure
         emotions = response_dict["emotionPredictions"][0]["emotion"]
 
-        anger = emotions["anger"]
-        disgust = emotions["disgust"]
-        fear = emotions["fear"]
-        joy = emotions["joy"]
-        sadness = emotions["sadness"]
-
-        # Determine dominant emotion
         emotion_scores = {
-            "anger": anger,
-            "disgust": disgust,
-            "fear": fear,
-            "joy": joy,
-            "sadness": sadness
+            "anger": emotions["anger"],
+            "disgust": emotions["disgust"],
+            "fear": emotions["fear"],
+            "joy": emotions["joy"],
+            "sadness": emotions["sadness"]
         }
 
         dominant_emotion = max(emotion_scores, key=emotion_scores.get)
 
-        return {
-            "anger": anger,
-            "disgust": disgust,
-            "fear": fear,
-            "joy": joy,
-            "sadness": sadness,
-            "dominant_emotion": dominant_emotion
-        }
+        emotion_scores["dominant_emotion"] = dominant_emotion
+        return emotion_scores
 
     except requests.exceptions.RequestException:
+        # ✅ Network / timeout safety
         return {
             "anger": None,
             "disgust": None,
